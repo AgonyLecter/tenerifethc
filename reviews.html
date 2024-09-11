@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THC Vault - Reviews</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bungee&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Bungee', sans-serif;
+            background-color: #0f0f0f;
+            color: white;
+            text-align: center;
+            overflow-x: hidden;
+        }
+
+        header {
+            background-color: #000000;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #f44336;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        img {
+            width: 150px;
+            margin: 10px auto;
+            -webkit-user-drag: none;
+            -moz-user-drag: none;
+            -ms-user-drag: none;
+            user-drag: none;
+        }
+
+        .club-card {
+            background-color: #000000;
+            border: 3px solid #f44336;
+            border-radius: 20px;
+            padding: 20px;
+            margin: 20px auto;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.7);
+        }
+
+        .club-card h2 {
+            color: #f44336;
+            font-size: 2em;
+            margin-bottom: 15px;
+        }
+
+        .club-card p {
+            font-size: 1.4em;
+        }
+
+        button {
+            background-color: #f44336;
+            border: none;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.3em;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #d32f2f;
+        }
+
+        .review-form textarea {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: none;
+            margin: 15px 0;
+            resize: vertical;
+            height: 120px;
+            font-size: 1.3em;
+            box-sizing: border-box;
+        }
+
+        .toast {
+            visibility: hidden;
+            min-width: 300px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 20px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            bottom: 30px;
+            font-size: 20px;
+            opacity: 0;
+            transition: opacity 0.5s, bottom 0.5s;
+        }
+
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+
+        footer {
+            padding: 10px;
+            background-color: #222;
+            color: #aaa;
+        }
+
+        .back-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background-color: #f44336;
+            color: white;
+            padding: 20px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 15px rgba(255, 0, 0, 0.7);
+        }
+
+        .back-button:hover {
+            background-color: #d32f2f;
+            transform: scale(1.1);
+        }
+
+        #nickname-display {
+            color: #f44336;
+            font-size: 1.8em;
+            margin-top: 20px;
+        }
+    </style>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+</head>
+<body>
+
+<header>
+    <img src="logo.png" alt="THC Vault Logo">
+    <h1>Club Reviews</h1>
+    <div id="nickname-display"></div>
+</header>
+
+<section id="club-list"></section>
+
+<button class="back-button" onclick="window.location.href='index.html'">Return to Index</button>
+
+<div id="toast" class="toast"></div>
+
+<footer>
+    <p>© 2024 THC Vault - All rights reserved.</p>
+</footer>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAXfxxh7tKUiPExLLE-lU337oo1uYgEIZ0",
+        authDomain: "thcvault-1c873.firebaseapp.com",
+        databaseURL: "https://thcvault-1c873-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "thcvault-1c873",
+        storageBucket: "thcvault-1c873.appspot.com",
+        messagingSenderId: "764204816662",
+        appId: "1:764204816662:web:beb1351828b860f1235837",
+        measurementId: "G-19LRQMD9V7"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    let currentNickname = '';
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            loadUserInfo(user.uid);
+        } else {
+            showToast('Please log in to access reviews.');
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 3000);
+        }
+    });
+
+    function loadUserInfo(uid) {
+        db.ref('users/' + uid).once('value').then(snapshot => {
+            currentNickname = snapshot.val().nickname;
+            document.getElementById('nickname-display').textContent = "Logged in as: " + currentNickname;
+            loadClubs();
+        });
+    }
+
+    const clubs = [
+        { id: "club1", name: "CannaCave", description: "Enthusiastic smokers will find a beautiful atmosphere and strains to suit all tastes." },
+        { id: "club2", name: "Headquarters420", description: "Beautiful atmosphere and strains to satisfy even the most demanding smoker." },
+        { id: "club3", name: "Pinkz Lounge Tenerife", description: "Excellent choice of weed, CaliPack, and truly incredible strains." },
+        { id: "club4", name: "HighSupplyCsc", description: "Popular among tourists, you will find excellent strains and staff ready for you." },
+        { id: "club5", name: "El Vice City Social Club", description: "You will find truly spectacular hash, a place in front of the harbor, joint and boat trip?" },
+        { id: "club6", name: "El Jardín de Shiva CSC", description: "A chill and niche spot, suitable for smokers who want to experience something less chaotic and touristy." }
+    ];
+
+    const clubList = document.getElementById('club-list');
+
+    function loadClubs() {
+        clubs.forEach(club => {
+            const clubCard = document.createElement('div');
+            clubCard.classList.add('club-card');
+            clubCard.innerHTML = `
+                <h2>${club.name}</h2>
+                <p>${club.description}</p>
+                <div class="review-form">
+                    <textarea id="review-${club.id}" placeholder="Write your review"></textarea>
+                    <button onclick="submitReview('${club.id}')">Submit Review</button>
+                </div>
+                <div id="reviews-${club.id}"></div>
+            `;
+            clubList.appendChild(clubCard);
+            loadReviews(club.id);
+        });
+    }
+
+    function loadReviews(clubId) {
+        db.ref('reviews/' + clubId).on('value', (snapshot) => {
+            const reviews = snapshot.val();
+            const reviewsDiv = document.getElementById('reviews-' + clubId);
+            reviewsDiv.innerHTML = '';
+
+            if (reviews) {
+                for (let key in reviews) {
+                    const review = reviews[key];
+                    const reviewElement = document.createElement('p');
+                    reviewElement.textContent = `${review.nickname} (${review.date}): ${review.review}`;
+                    reviewsDiv.appendChild(reviewElement);
+                }
+            }
+        });
+    }
+
+    function submitReview(clubId) {
+        const reviewText = document.getElementById('review-' + clubId).value;
+        const user = auth.currentUser;
+
+        if (!user) {
+            showToast('You must be logged in to leave a review.');
+            return;
+        }
+
+        if (reviewText) {
+            const now = new Date();
+            const reviewData = {
+                userId: user.uid,
+                nickname: currentNickname,
+                review: reviewText,
+                date: now.toLocaleString()
+            };
+
+            db.ref('reviews/' + clubId).push(reviewData).then(() => {
+                document.getElementById('review-' + clubId).value = '';
+                showToast('Review submitted successfully!');
+            }).catch(error => {
+                showToast('Error submitting review: ' + error.message);
+            });
+        } else {
+            showToast('Please write a review before submitting.');
+        }
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.className = "toast show";
+        setTimeout(() => {
+            toast.className = toast.className.replace("show", "");
+        }, 3000);
+    }
+
+    // Disabling right-click and dev tools
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    document.onkeydown = function(e) {
+        if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0))) {
+            return false;
+        }
+    };
+</script>
+
+</body>
+</html>
+
+
+
+
+
