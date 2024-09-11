@@ -6,7 +6,7 @@
     <title>THC Vault - Cannabis Club Guide</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bungee&display=swap');
-        
+
         body, html {
             margin: 0;
             padding: 0;
@@ -102,7 +102,82 @@
             color: #aaa;
         }
 
-        /* Animations */
+        #auth-container {
+            margin: 20px;
+            padding: 20px;
+            background-color: #1c1c1c;
+            border-radius: 10px;
+            display: none;
+            max-width: 400px;
+            margin: 0 auto;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        #auth-container input {
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 1.1em;
+            border-radius: 5px;
+            border: none;
+            width: calc(100% - 20px);
+            display: block;
+            margin-left: 10px;
+        }
+
+        #auth-container button {
+            margin-top: 10px;
+            background-color: #f44336;
+            border: none;
+            color: white;
+            padding: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            border-radius: 5px;
+            width: calc(100% - 20px);
+            margin-left: 10px;
+        }
+
+        #auth-container button:hover {
+            background-color: #d32f2f;
+        }
+
+        #reviews-button, #logout-button, #nickname-display {
+            display: none;
+            margin-top: 20px;
+        }
+
+        #nickname-display {
+            font-size: 1.2em;
+            color: #f44336;
+            text-shadow: 2px 2px 0px #000;
+            margin-top: 10px;
+        }
+
+        /* Toast */
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            margin-left: -125px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            bottom: 30px;
+            font-size: 17px;
+            opacity: 0;
+            transition: opacity 0.5s, bottom 0.5s;
+        }
+
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -129,13 +204,11 @@
             to { opacity: 1; transform: scale(1); }
         }
 
-        /* Disable right-click */
         body {
             -webkit-user-select: none;
             -webkit-touch-callout: none;
         }
 
-        /* Responsive Design */
         @media only screen and (max-width: 600px) {
             h1 {
                 font-size: 1.5em;
@@ -155,6 +228,11 @@
         }
     </style>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
     <!-- Leaflet CSS for Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
@@ -170,6 +248,21 @@
 
     <section id="club-list"></section>
 
+    <div id="auth-container">
+        <h2>Login/Register</h2>
+        <input type="text" id="nickname" placeholder="Nickname" />
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <button onclick="register()">Register</button>
+    </div>
+
+    <div id="nickname-display"></div>
+    <button id="reviews-button" onclick="window.location.href='reviews.html'">Go to Reviews</button>
+    <button id="logout-button" onclick="logout()">Logout</button>
+
+    <div id="toast" class="toast"></div>
+
     <footer>
         <p>© 2024 THC Vault - All rights reserved.</p>
     </footer>
@@ -178,13 +271,103 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        document.addEventListener('contextmenu', event => event.preventDefault());
-        document.onkeydown = function(e) {
-            if (e.keyCode == 123 || e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
-                return false;
-            }
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXfxxh7tKUiPExLLE-lU337oo1uYgEIZ0",
+            authDomain: "thcvault-1c873.firebaseapp.com",
+            databaseURL: "https://thcvault-1c873-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "thcvault-1c873",
+            storageBucket: "thcvault-1c873.appspot.com",
+            messagingSenderId: "764204816662",
+            appId: "1:764204816662:web:beb1351828b860f1235837",
+            measurementId: "G-19LRQMD9V7"
         };
 
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = "toast show";
+            setTimeout(() => {
+                toast.className = toast.className.replace("show", "");
+            }, 3000);
+        }
+
+        function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const nickname = document.getElementById('nickname').value;
+
+            if (!nickname) {
+                showToast('Please enter a nickname');
+                return;
+            }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    db.ref('users/' + user.uid).set({
+                        nickname: nickname
+                    });
+                    showToast('Registration successful!');
+                })
+                .catch(error => {
+                    showToast('Registration error: ' + error.message);
+                });
+        }
+
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => {
+                    document.getElementById('auth-container').style.display = 'none';
+                    loadUserInfo();
+                    showToast('Login successful!');
+                })
+                .catch(error => {
+                    showToast('Login error: ' + error.message);
+                });
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                document.getElementById('auth-container').style.display = 'block';
+                document.getElementById('reviews-button').style.display = 'none';
+                document.getElementById('nickname-display').style.display = 'none';
+                document.getElementById('logout-button').style.display = 'none';
+                showToast('Logged out successfully!');
+            });
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                loadUserInfo();
+            } else {
+                document.getElementById('auth-container').style.display = 'block';
+                document.getElementById('reviews-button').style.display = 'none';
+                document.getElementById('logout-button').style.display = 'none';
+                document.getElementById('nickname-display').style.display = 'none';
+            }
+        });
+
+        function loadUserInfo() {
+            const user = auth.currentUser;
+            if (user) {
+                db.ref('users/' + user.uid).once('value').then(snapshot => {
+                    const nickname = snapshot.val().nickname;
+                    document.getElementById('nickname-display').textContent = "Welcome, " + nickname;
+                    document.getElementById('nickname-display').style.display = 'block';
+                    document.getElementById('reviews-button').style.display = 'block';
+                    document.getElementById('logout-button').style.display = 'block';
+                });
+            }
+        }
+
+        // Leaflet map setup
         const map = L.map('map', {
             tap: false,
             inertia: true,
@@ -206,33 +389,31 @@
         });
 
         const predefinedClubs = [
-    { name: "CannaCave", description: "Enthusiastic smokers will find a beautiful atmosphere and strains to suit all tastes.", latitude: 28.081623626598752, longitude: -16.73293724695542, url: "https://maps.app.goo.gl/DuiUdy2v8m7LDFcS6", logo: "cannacave.png" },
-    { name: "Headquarters420", description: "Beautiful atmosphere and strains to satisfy even the most demanding smoker.", latitude: 28.051608439911178, longitude: -16.720020104628667, url: "https://maps.app.goo.gl/cF33EFC6zjhsProC6", logo: "hq.png" },
-    { name: "Pinkz Lounge Tenerife", description: "Excellent choice of weed, CaliPack, and truly incredible strains.", latitude: 28.051980407795, longitude: -16.718768446956716, url: "https://maps.app.goo.gl/hNGsVwVnXcPyiHQS8", logo: "pinkz.png" },
-    { name: "HighSupplyCsc", description: "Popular among tourists, you will find excellent strains and staff ready for you.", latitude: 28.06623205394238, longitude: -16.729894162299857, url: "https://maps.app.goo.gl/62iUWsbF5BFUXXrh9", logo: "high.png" },
-    { name: "El Vice City Social Club", description: "You will find truly spectacular hash, a place in front of the harbor, joint and boat trip?", latitude: 28.077914468189384, longitude: -16.735808675791525, url: "https://maps.app.goo.gl/uvThgTJ624KtbENn7", logo: "vice.png" },
-    { name: "El Jardín de Shiva CSC", description: "A chill and niche spot, suitable for smokers who want to experience something less chaotic and touristy.", latitude: 28.18120505949585, longitude: -16.815398275787093, url: "https://maps.app.goo.gl/gPMdm7SkRzY5WuzV8", logo: "shiva.png" }
-];
+            { name: "CannaCave", description: "Enthusiastic smokers will find a beautiful atmosphere and strains to suit all tastes.", latitude: 28.081623626598752, longitude: -16.73293724695542, url: "https://maps.app.goo.gl/DuiUdy2v8m7LDFcS6", logo: "cannacave.png" },
+            { name: "Headquarters420", description: "Beautiful atmosphere and strains to satisfy even the most demanding smoker.", latitude: 28.051608439911178, longitude: -16.720020104628667, url: "https://maps.app.goo.gl/cF33EFC6zjhsProC6", logo: "hq.png" },
+            { name: "Pinkz Lounge Tenerife", description: "Excellent choice of weed, CaliPack, and truly incredible strains.", latitude: 28.051980407795, longitude: -16.718768446956716, url: "https://maps.app.goo.gl/hNGsVwVnXcPyiHQS8", logo: "pinkz.png" },
+            { name: "HighSupplyCsc", description: "Popular among tourists, you will find excellent strains and staff ready for you.", latitude: 28.06623205394238, longitude: -16.729894162299857, url: "https://maps.app.goo.gl/62iUWsbF5BFUXXrh9", logo: "high.png" },
+            { name: "El Vice City Social Club", description: "You will find truly spectacular hash, a place in front of the harbor, joint and boat trip?", latitude: 28.077914468189384, longitude: -16.735808675791525, url: "https://maps.app.goo.gl/uvThgTJ624KtbENn7", logo: "vice.png" },
+            { name: "El Jardín de Shiva CSC", description: "A chill and niche spot, suitable for smokers who want to experience something less chaotic and touristy.", latitude: 28.18120505949585, longitude: -16.815398275787093, url: "https://maps.app.goo.gl/gPMdm7SkRzY5WuzV8", logo: "shiva.png" }
+        ];
 
+        predefinedClubs.forEach((club) => {
+            const marker = L.marker([club.latitude, club.longitude], { icon: cannabisIcon }).addTo(map)
+                .bindPopup(`<b>${club.name}</b><br>${club.description}<br><a href="${club.url}" target="_blank">Get Directions</a>`);
+            markers.push(marker);
+            bounds.extend(marker.getLatLng());
 
-predefinedClubs.forEach((club) => {
-    const marker = L.marker([club.latitude, club.longitude], { icon: cannabisIcon }).addTo(map)
-        .bindPopup(`<b>${club.name}</b><br>${club.description}<br><a href="${club.url}" target="_blank">Get Directions</a>`);
-    markers.push(marker);
-    bounds.extend(marker.getLatLng());
-
-    const clubList = document.getElementById('club-list');
-    const clubCard = document.createElement('div');
-    clubCard.classList.add('club-card');
-    clubCard.innerHTML = `
-        <h2>${club.name}</h2>
-        <img src="${club.logo}" alt="${club.name} Logo" width="100">
-        <p>${club.description}</p>
-        <button onclick="window.open('${club.url}', '_blank')">Get Directions</button>
-    `;
-    clubList.appendChild(clubCard);
-});
-
+            const clubList = document.getElementById('club-list');
+            const clubCard = document.createElement('div');
+            clubCard.classList.add('club-card');
+            clubCard.innerHTML = `
+                <h2>${club.name}</h2>
+                <img src="${club.logo}" alt="${club.name} Logo" width="100">
+                <p>${club.description}</p>
+                <button onclick="window.open('${club.url}', '_blank')">Get Directions</button>
+            `;
+            clubList.appendChild(clubCard);
+        });
 
         map.fitBounds(bounds);
     </script>
