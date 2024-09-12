@@ -153,7 +153,6 @@
             margin-top: 10px;
         }
 
-        /* Toast */
         .toast {
             visibility: hidden;
             min-width: 250px;
@@ -228,12 +227,9 @@
         }
     </style>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-    <!-- Leaflet CSS for Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
@@ -255,6 +251,7 @@
         <input type="password" id="password" placeholder="Password">
         <button onclick="login()">Login</button>
         <button onclick="register()">Register</button>
+        <button onclick="resetPassword()">Forgot Password?</button>
     </div>
 
     <div id="nickname-display"></div>
@@ -267,9 +264,7 @@
         <p>© 2024 THC Vault - All rights reserved.</p>
     </footer>
 
-    <!-- Leaflet JS for Map -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAXfxxh7tKUiPExLLE-lU337oo1uYgEIZ0",
@@ -305,17 +300,23 @@
                 return;
             }
 
-            auth.createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    const user = userCredential.user;
-                    db.ref('users/' + user.uid).set({
-                        nickname: nickname
-                    });
-                    showToast('Registration successful!');
-                })
-                .catch(error => {
-                    showToast('Registration error: ' + error.message);
-                });
+            db.ref('users').orderByChild('nickname').equalTo(nickname).once('value', snapshot => {
+                if (snapshot.exists()) {
+                    showToast('Nickname already taken, choose another one.');
+                } else {
+                    auth.createUserWithEmailAndPassword(email, password)
+                        .then((userCredential) => {
+                            const user = userCredential.user;
+                            db.ref('users/' + user.uid).set({
+                                nickname: nickname
+                            });
+                            showToast('Registration successful!');
+                        })
+                        .catch(error => {
+                            showToast(simplifyErrorMessage(error.message));
+                        });
+                }
+            });
         }
 
         function login() {
@@ -329,7 +330,7 @@
                     showToast('Login successful!');
                 })
                 .catch(error => {
-                    showToast('Login error: ' + error.message);
+                    showToast(simplifyErrorMessage(error.message));
                 });
         }
 
@@ -341,6 +342,22 @@
                 document.getElementById('logout-button').style.display = 'none';
                 showToast('Logged out successfully!');
             });
+        }
+
+        function resetPassword() {
+            const email = document.getElementById('email').value;
+            if (!email) {
+                showToast('Please enter your email to reset password.');
+                return;
+            }
+
+            auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    showToast('Password reset email sent!');
+                })
+                .catch(error => {
+                    showToast(simplifyErrorMessage(error.message));
+                });
         }
 
         auth.onAuthStateChanged(user => {
@@ -367,12 +384,28 @@
             }
         }
 
-        // Leaflet map setup
+        function simplifyErrorMessage(error) {
+            if (error.includes('email')) return 'Invalid email address';
+            if (error.includes('password')) return 'Invalid password';
+            if (error.includes('network')) return 'Network error, please try again';
+            return 'An unexpected error occurred';
+        }
+
         const map = L.map('map', {
             tap: false,
             inertia: true,
             zoomControl: true
-        }).setView([28.2916, -16.6291], 13);
+        });
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const userLatLng = [position.coords.latitude, position.coords.longitude];
+                map.setView(userLatLng, 13);
+                L.marker(userLatLng).addTo(map).bindPopup('You are here').openPopup();
+            });
+        } else {
+            map.setView([28.2916, -16.6291], 13);
+        }
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
