@@ -8,18 +8,19 @@
         @import url('https://fonts.googleapis.com/css2?family=Bungee&display=swap');
 
         body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: 'Bungee', sans-serif;
-            background-color: #0f0f0f;
-            color: white;
-            text-align: center;
-            overflow-x: hidden;
-            animation: pageLoad 1s ease-in-out;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-        }
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Bungee', sans-serif;
+    background-color: #0f0f0f;
+    color: white;
+    text-align: center;
+    overflow-x: hidden;
+    animation: pageLoad 1s ease-in-out;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
 
         header {
             background-color: #000000;
@@ -36,13 +37,12 @@
         }
 
         img {
-            width: 150px;
-            margin: 10px auto;
-            -webkit-user-drag: none;
-            -moz-user-drag: none;
-            -ms-user-drag: none;
-            user-drag: none;
-        }
+    width: 150px;
+    margin: 10px auto;
+    -webkit-user-drag: none;
+    -moz-user-drag: none;
+    -ms-user-drag: none;
+}
 
         #map {
             height: 500px;
@@ -204,9 +204,10 @@
         }
 
         body {
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-        }
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
 
         @media only screen and (max-width: 600px) {
             h1 {
@@ -291,33 +292,34 @@
         }
 
         function register() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const nickname = document.getElementById('nickname').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const nickname = document.getElementById('nickname').value;
 
-            if (!nickname) {
-                showToast('Please enter a nickname');
-                return;
-            }
+    if (!nickname) {
+        showToast('Please enter a nickname');
+        return;
+    }
 
-            db.ref('users').orderByChild('nickname').equalTo(nickname).once('value', snapshot => {
-                if (snapshot.exists()) {
-                    showToast('Nickname already taken, choose another one.');
-                } else {
-                    auth.createUserWithEmailAndPassword(email, password)
-                        .then((userCredential) => {
-                            const user = userCredential.user;
-                            db.ref('users/' + user.uid).set({
-                                nickname: nickname
-                            });
-                            showToast('Registration successful!');
-                        })
-                        .catch(error => {
-                            showToast(simplifyErrorMessage(error.message));
-                        });
-                }
+    // Registra e autentica l'utente
+    auth.createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            const user = userCredential.user;
+
+            // Scrivi nel database solo dopo che l'utente è stato autenticato
+            db.ref('users/' + user.uid).set({
+                nickname: nickname
+            }).then(() => {
+                showToast('Registration successful!');
+            }).catch((error) => {
+                showToast('Error saving user data: ' + error.message);
             });
-        }
+        })
+        .catch(error => {
+            showToast('Error registering: ' + error.message);
+        });
+}
+
 
         function login() {
             const email = document.getElementById('email').value;
