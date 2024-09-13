@@ -8,19 +8,19 @@
         @import url('https://fonts.googleapis.com/css2?family=Bungee&display=swap');
 
         body, html {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    font-family: 'Bungee', sans-serif;
-    background-color: #0f0f0f;
-    color: white;
-    text-align: center;
-    overflow-x: hidden;
-    animation: pageLoad 1s ease-in-out;
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-}
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Bungee', sans-serif;
+            background-color: #0f0f0f;
+            color: white;
+            text-align: center;
+            overflow-x: hidden;
+            animation: pageLoad 1s ease-in-out;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
 
         header {
             background-color: #000000;
@@ -37,12 +37,12 @@
         }
 
         img {
-    width: 150px;
-    margin: 10px auto;
-    -webkit-user-drag: none;
-    -moz-user-drag: none;
-    -ms-user-drag: none;
-}
+            width: 150px;
+            margin: 10px auto;
+            -webkit-user-drag: none;
+            -moz-user-drag: none;
+            -ms-user-drag: none;
+        }
 
         #map {
             height: 500px;
@@ -137,10 +137,6 @@
             margin-left: 10px;
         }
 
-        #auth-container button:hover {
-            background-color: #d32f2f;
-        }
-
         #reviews-button, #logout-button, #nickname-display {
             display: none;
             margin-top: 20px;
@@ -204,10 +200,10 @@
         }
 
         body {
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-}
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
 
         @media only screen and (max-width: 600px) {
             h1 {
@@ -292,34 +288,31 @@
         }
 
         function register() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const nickname = document.getElementById('nickname').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const nickname = document.getElementById('nickname').value;
 
-    if (!nickname) {
-        showToast('Please enter a nickname');
-        return;
-    }
+            if (!nickname) {
+                showToast('Please enter a nickname');
+                return;
+            }
 
-    // Registra e autentica l'utente
-    auth.createUserWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            const user = userCredential.user;
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
 
-            // Scrivi nel database solo dopo che l'utente è stato autenticato
-            db.ref('users/' + user.uid).set({
-                nickname: nickname
-            }).then(() => {
-                showToast('Registration successful!');
-            }).catch((error) => {
-                showToast('Error saving user data: ' + error.message);
-            });
-        })
-        .catch(error => {
-            showToast('Error registering: ' + error.message);
-        });
-}
-
+                    db.ref('users/' + user.uid).set({
+                        nickname: nickname
+                    }).then(() => {
+                        showToast('Registration successful!');
+                    }).catch((error) => {
+                        showToast('Error saving user data: ' + error.message);
+                    });
+                })
+                .catch(error => {
+                    showToast('Error registering: ' + error.message);
+                });
+        }
 
         function login() {
             const email = document.getElementById('email').value;
@@ -399,15 +392,24 @@
             zoomControl: true
         });
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                const userLatLng = [position.coords.latitude, position.coords.longitude];
-                map.setView(userLatLng, 13);
-                L.marker(userLatLng).addTo(map).bindPopup('You are here').openPopup();
-            });
-        } else {
-            map.setView([28.2916, -16.6291], 13);
+        function requestLocation() {
+            showToast('Requesting location...');
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const userLatLng = [position.coords.latitude, position.coords.longitude];
+                    map.setView(userLatLng, 13);
+                    L.marker(userLatLng).addTo(map).bindPopup('You are here').openPopup();
+                    showToast("Location acquired successfully.");
+                }, (error) => {
+                    showToast("Location access denied.");
+                });
+            } else {
+                showToast("Geolocation not supported by your browser.");
+            }
         }
+
+        requestLocation();
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
